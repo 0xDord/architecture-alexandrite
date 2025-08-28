@@ -1,0 +1,34 @@
+@startuml
+
+actor "Operator" as operator
+participant "MES" as mes
+participant "MES API" as mes_api
+database "Redis cache" as cache
+database "MES DB" as mes_db
+
+== Запрос заказов ==
+
+operator -> mes: Просмотр заказов
+mes -> mes_api: GET /orders?status&page&size
+mes_api -> cache: Получение данных из кеша
+alt данные есть в кеше
+    cache --> mes_api: передача данных из кеша
+else данных нет в кеше
+    mes_api -> mes_db: чтение данных из БД
+    mes_db --> mes_api: передача данных из БД
+    mes_api --> cache: Запись данных в кеш
+end
+mes_api --> mes: Вернуть заказы
+mes -> operator: Отобразить заказы
+
+== Оператор берет в работу заказ ==
+
+operator -> mes: Взять заказ в работу
+mes -> mes_api: PATCH /orders/{id}?status
+mes_api -> mes_db: Обновить статус в БД
+mes_api <- mes_db: Статус обновлен
+mes_api -> cache: Обновить заказ в кеше
+mes_api --> mes: Вернуть ответ
+mes -> operator: Отобразить результат
+
+@enduml
